@@ -2,65 +2,29 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-st.title("🔮 GDP Forecast (2027–2030)")
+st.title("📊 Country GDP Analysis")
 
-# ==========================
-# Load datasets
-# ==========================
-hist = pd.read_csv("data/gdp_cleaned.csv")
-forecast = pd.read_csv("data/gdp_forecast_2030.csv")
+# Load dataset
+df = pd.read_csv("data/gdp_cleaned.csv")
 
-# ==========================
-# Clean Country column
-# ==========================
-hist["Country"] = (
-    hist["Country"]
-    .fillna("")
-    .astype(str)
-    .str.strip()
-)
+# Clean country column
+df["Country"] = df["Country"].astype(str)
+df = df[df["Country"] != "nan"]
 
-forecast["Country"] = (
-    forecast["Country"]
-    .fillna("")
-    .astype(str)
-    .str.strip()
-)
-
-# Remove blank or invalid country names
-hist = hist[
-    (hist["Country"] != "") &
-    (hist["Country"].str.lower() != "nan")
-]
-
-forecast = forecast[
-    (forecast["Country"] != "") &
-    (forecast["Country"].str.lower() != "nan")
-]
-
-# ==========================
 # Country selector
-# ==========================
-country_list = sorted(hist["Country"].drop_duplicates().tolist())
-
 country = st.selectbox(
     "Select Country",
-    country_list
+    sorted(df["Country"].unique())
 )
 
-# ==========================
 # Filter data
-# ==========================
-hist_country = hist[hist["Country"] == country]
-forecast_country = forecast[forecast["Country"] == country]
+country_df = df[df["Country"] == country]
 
-st.subheader(f"{country} GDP Historical vs Forecast")
+st.subheader(f"{country} GDP Trend")
 
-# ==========================
-# Historical chart
-# ==========================
+# GDP Trend Chart
 fig = px.line(
-    hist_country,
+    country_df,
     x="Year",
     y="GDP",
     markers=True,
@@ -70,27 +34,35 @@ fig = px.line(
     }
 )
 
-# ==========================
-# Forecast line
-# ==========================
-if not forecast_country.empty:
-    fig.add_scatter(
-        x=forecast_country["Year"],
-        y=forecast_country["GDP_Predicted"],
-        mode="lines+markers",
-        name="Forecast (Billion USD)"
-    )
-else:
-    st.warning("No forecast data available for this country.")
-
-# ==========================
-# Layout
-# ==========================
 fig.update_layout(
-    xaxis_title="Year",
-    yaxis_title="GDP (Billion USD)"
+    yaxis_title="GDP (Billion USD)",
+    xaxis_title="Year"
 )
 
 st.plotly_chart(fig, use_container_width=True)
 
 st.caption("GDP values are expressed in Billion USD.")
+
+# GDP Growth Rate
+country_df["Growth Rate (%)"] = country_df["GDP"].pct_change() * 100
+
+st.subheader(f"{country} GDP Growth Rate")
+
+fig2 = px.bar(
+    country_df,
+    x="Year",
+    y="Growth Rate (%)",
+    labels={
+        "Growth Rate (%)": "GDP Growth (%)",
+        "Year": "Year"
+    }
+)
+
+fig2.update_layout(
+    yaxis_title="GDP Growth (%)",
+    xaxis_title="Year"
+)
+
+st.plotly_chart(fig2, use_container_width=True)
+
+st.caption("GDP growth rate is calculated as the year-over-year percentage change in GDP.")
